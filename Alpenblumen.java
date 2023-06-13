@@ -5,6 +5,7 @@ import java.awt.geom.*;
 import javafx.geometry.Point3D;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Comparator;
 import java.util.Iterator;
 
@@ -21,17 +22,43 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     Point3D player;
     double azimuth = 0;
     
-    HashSet<Integer> keyspressed;
+    HashSet<Integer> keyspressed = new HashSet<Integer>();
 
     final static int NUM_MOUNTAINS = 30;
     final static double MAP_RADIUS = 15;
     final static double MIN_CLEARANCE = 2;
 
-    ArrayList<Point3D> mountains;
+    ArrayList<Point3D> mountains = new ArrayList<Point3D>();
+    
+    HashMap<Point3D,String> mountain_flowers = new HashMap<Point3D,String>();
+    HashMap<String,Color> flower_colors = new HashMap<String,Color>();
+    HashMap<String,Shape> flower_glyphs = new HashMap<String,Shape>();
+
+    final String flower_types = "34567";
     
     public Alpenblumen() {
+	// initialize flower types
+	flower_colors.put("3",Color.green);
+	flower_colors.put("4",Color.yellow);
+	flower_colors.put("5",Color.orange);
+	flower_colors.put("6",Color.cyan);
+	flower_colors.put("7",Color.magenta);
+
+	for (int i = 0; i < flower_types.length(); i++) {
+	    int petals = i+3;
+	    GeneralPath path = new GeneralPath();
+	    path.moveTo(0,1);
+	    for (int j = 0; j < petals; j++) {
+		double midangle = 2 * Math.PI * (j + 0.5) / petals;
+		double toangle = 2 * Math.PI * (j + 1) / petals;
+		path.quadTo(0.5*Math.sin(midangle),0.5*Math.cos(midangle),0,0);
+		path.quadTo(0.5*Math.sin(midangle),0.5*Math.cos(midangle),Math.sin(toangle),Math.cos(toangle));
+	    }
+	    path.closePath();
+	    flower_glyphs.put(String.valueOf(flower_types.charAt(i)),path);
+	}
+
 	// initialize mountains
-	mountains = new ArrayList<Point3D>();
 	for (int i = 0; i < NUM_MOUNTAINS; i++) {
 	    double x, y, z, min, max;
 	    boolean acceptable;
@@ -66,7 +93,9 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    } while (!acceptable);
 
 	    z = min + Math.random()*(max - min);
-	    mountains.add(new Point3D(x,y,z));
+	    Point3D new_mountain = new Point3D(x,y,z);
+	    mountain_flowers.put(new_mountain, String.valueOf(flower_types.charAt(i % flower_types.length())));
+	    mountains.add(new_mountain);
 	}
 
 	// initialize player
@@ -74,8 +103,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	fixHeight();
 	
 	// initialize width and height
-	width = 640;
-	height = 360;
+	width = 1280;
+	height = 720;
 
 	x0 = width/2;
 	y0 = (int)(height * 0.55);
@@ -107,7 +136,6 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	
 	// initialize timer and panel
 	timer = new Timer(20, this);
-        keyspressed = new HashSet<Integer>();
 
 	setPreferredSize(new Dimension(width, height));
 	setFocusable(true);
@@ -225,6 +253,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	graphics.setColor(Color.black);
 	graphics.fill(viewport);
 	
+	// draw the mountains
 	mountains.sort(Comparator.comparing(p -> -(
 						  (p.getX() - player.getX())*(p.getX() - player.getX()) +
 						  (p.getY() - player.getY())*(p.getY() - player.getY())
@@ -239,6 +268,9 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		distance = Math.sqrt(dx*dx+dy*dy);
 		if (distance > 0) {
 		    elevation = dz / distance;
+		    if (elevation < -1) {
+			elevation = -1;
+		    }
 		    m_azimuth = Math.atan2(dx,dy);
 		}
 		else {
@@ -272,9 +304,21 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		m_azimuth -= azimuth;
 		if (m_azimuth < -Math.PI) { m_azimuth += 2*Math.PI; }
 		if (m_azimuth > Math.PI) { m_azimuth -= 2*Math.PI; }
-		
-		AffineTransform shift_azimuth = AffineTransform.getTranslateInstance(m_azimuth,0);
-		graphics.fill(view_transform.createTransformedShape(shift_azimuth.createTransformedShape(mountain)));
+
+		AffineTransform mountain_view = (AffineTransform)view_transform.clone();
+		mountain_view.concatenate(AffineTransform.getTranslateInstance(m_azimuth,0));
+		graphics.fill(mountain_view.createTransformedShape(mountain));
+
+		// draw flower
+		if (distance < 0.75) {
+		    distance = 0.75;
+		}
+		String flower = mountain_flowers.get(p);
+		graphics.setColor(flower_colors.get(flower));
+	        mountain_view.concatenate(AffineTransform.getTranslateInstance(0,elevation));
+		mountain_view.concatenate(AffineTransform.getScaleInstance(0.5*yscale/(xscale*distance),0.5/distance));
+		mountain_view.concatenate(AffineTransform.getTranslateInstance(0,1.25));
+		graphics.fill(mountain_view.createTransformedShape(flower_glyphs.get(flower)));
 	    });
 
     }
