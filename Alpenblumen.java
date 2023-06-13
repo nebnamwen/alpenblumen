@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.Comparator;
 import java.util.Iterator;
 
-public class Game extends JPanel implements KeyListener, ActionListener, Runnable {
+public class Alpenblumen extends JPanel implements KeyListener, ActionListener, Runnable {
 
     final GeneralPath cosine_shape;
     final Shape viewport;
@@ -29,7 +29,7 @@ public class Game extends JPanel implements KeyListener, ActionListener, Runnabl
 
     ArrayList<Point3D> mountains;
     
-    public Game() {
+    public Alpenblumen() {
 	// initialize mountains
 	mountains = new ArrayList<Point3D>();
 	for (int i = 0; i < NUM_MOUNTAINS; i++) {
@@ -138,7 +138,7 @@ public class Game extends JPanel implements KeyListener, ActionListener, Runnabl
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Game());
+        SwingUtilities.invokeLater(new Alpenblumen());
     }
 
     // implements Runnable
