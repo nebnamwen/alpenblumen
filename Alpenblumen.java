@@ -11,7 +11,7 @@ import java.util.Iterator;
 
 public class Alpenblumen extends JPanel implements KeyListener, ActionListener, Runnable {
 
-    final GeneralPath cosine_shape;
+    final GeneralPath cosine_shape, score_shape, inventory_shape;
     final Shape viewport;
     final int width, height, x0, y0, xscale, yscale;
     final AffineTransform view_transform;
@@ -21,6 +21,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     
     Point3D player;
     double azimuth = 0;
+    String[] inventory = new String[2];
+    int score = 0;
     
     HashSet<Integer> keyspressed = new HashSet<Integer>();
 
@@ -51,13 +53,50 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    for (int j = 0; j < petals; j++) {
 		double midangle = 2 * Math.PI * (j + 0.5) / petals;
 		double toangle = 2 * Math.PI * (j + 1) / petals;
-		path.quadTo(0.5*Math.sin(midangle),0.5*Math.cos(midangle),0,0);
-		path.quadTo(0.5*Math.sin(midangle),0.5*Math.cos(midangle),Math.sin(toangle),Math.cos(toangle));
+		path.quadTo(0.7*Math.sin(midangle),0.7*Math.cos(midangle),0,0);
+		path.quadTo(0.7*Math.sin(midangle),0.7*Math.cos(midangle),Math.sin(toangle),Math.cos(toangle));
 	    }
 	    path.closePath();
 	    flower_glyphs.put(String.valueOf(flower_types.charAt(i)),path);
 	}
 
+	// initialize cosine shape
+	cosine_shape = new GeneralPath();
+
+	cosine_shape.moveTo(-3*Math.PI, -2);
+	cosine_shape.lineTo(-3*Math.PI, 1);
+	
+	double cos_correction = 0.1;
+	double s = -1;
+	for (int i = -3; i <= 2; i++) {
+	    cosine_shape.curveTo(i*Math.PI + Math.PI/3 + cos_correction, s,
+				 (i+1)*Math.PI - Math.PI/3 - cos_correction, -s,
+				 (i+1)*Math.PI, -s);
+	    s = -s;
+	}
+
+	cosine_shape.lineTo(3*Math.PI, -2);
+	cosine_shape.closePath();
+
+	// initialize HUD shapes
+	score_shape = new GeneralPath();
+	score_shape.moveTo(0,1);
+	for (int i = 0; i < 5; i++) {
+		double midangle = 2 * Math.PI * (i + 0.5) / 5;
+		double toangle = 2 * Math.PI * (i + 1) / 5;
+		score_shape.lineTo(0.5*Math.sin(midangle),0.5*Math.cos(midangle));
+		score_shape.lineTo(Math.sin(toangle),Math.cos(toangle));
+	    }
+	score_shape.closePath();
+	
+	inventory_shape = new GeneralPath();
+	inventory_shape.moveTo(0,1);
+	inventory_shape.quadTo(1,1,1,0);
+	inventory_shape.quadTo(1,-1,0,-1);
+	inventory_shape.quadTo(-1,-1,-1,0);
+	inventory_shape.quadTo(-1,1,0,1);
+	inventory_shape.closePath();
+	
 	// initialize mountains
 	for (int i = 0; i < NUM_MOUNTAINS; i++) {
 	    double x, y, z, min, max;
@@ -116,24 +155,6 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 
 	view_transform = new AffineTransform(xscale,0,0,-yscale,x0,y0);
 	
-	// initialize cosine shape
-	cosine_shape = new GeneralPath();
-
-	cosine_shape.moveTo(-3*Math.PI, -2);
-	cosine_shape.lineTo(-3*Math.PI, 1);
-	
-	double cos_correction = 0.1;
-	double s = -1;
-	for (int i = -3; i <= 2; i++) {
-	    cosine_shape.curveTo(i*Math.PI + Math.PI/3 + cos_correction, s,
-				 (i+1)*Math.PI - Math.PI/3 - cos_correction, -s,
-				 (i+1)*Math.PI, -s);
-	    s = -s;
-	}
-
-	cosine_shape.lineTo(3*Math.PI, -2);
-	cosine_shape.closePath();
-	
 	// initialize timer and panel
 	timer = new Timer(20, this);
 
@@ -160,15 +181,6 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	player = new Point3D(player.getX(),player.getY(),z);
     }
     
-    public void start() {
-	nanotime = System.nanoTime();
-	timer.start();
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Alpenblumen());
-    }
-
     // implements Runnable
     public void run() {
 	JFrame f = new JFrame("alpenblumen");
@@ -182,7 +194,6 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     }
     
     // implements ActionListener                                                                                   
-
     public void actionPerformed(ActionEvent e) {
         long newnanotime = System.nanoTime();
         long delta = newnanotime - nanotime;
@@ -217,8 +228,75 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
         return keyspressed.contains(new Integer(keycode));
     }
 
+    public boolean isFlowerPickable(Point3D p) {
+	String flower = mountain_flowers.get(p);
+	if (flower == null) {
+	    return false;
+	}
+	if (inventory[0] != null && !inventory[0].equals(flower) && inventory[1] != null && !inventory[1].equals(flower)) {
+	    return false;
+	}
+
+	double dx, dy, dz, distance, m_azimuth;
+	dx = p.getX() - player.getX();
+	dy = p.getY() - player.getY();		
+	dz = p.getZ() - player.getZ();		
+
+	distance = Math.sqrt(dx*dx+dy*dy);
+	if (distance > 0) {
+	    m_azimuth = Math.atan2(dx,dy);
+	}
+	else {
+	    m_azimuth = azimuth;
+	}
+	
+	if (distance <= 0.85 && Math.cos(m_azimuth - azimuth) >= 0.75) {
+	    return true;
+	}
+	else {
+	    return false;
+	}
+    }
+    
+    public Point3D pickableFlower() {
+	Iterator<Point3D> iter = mountains.iterator();
+        while (iter.hasNext()) {
+            Point3D p = iter.next();
+	    if (isFlowerPickable(p)) {
+		return p;
+	    }
+	}
+	return null;
+    }
+    
     // update
     public void update(double dt) {
+	if (checkKey(KeyEvent.VK_SPACE)) {
+	    Point3D flower = pickableFlower();
+	    if (flower != null) {
+		boolean picked = false;
+		for (int i = 0; i <= 1; i++) {
+		    if (!picked && mountain_flowers.get(flower).equals(inventory[i])) {
+			inventory[i] = null;
+			mountain_flowers.remove(flower);
+			score += 1;
+			picked = true;
+		    }
+		}
+		for (int i = 0; i <= 1; i++) {
+		    if (!picked && inventory[i] == null) {
+			inventory[i] = mountain_flowers.get(flower);
+			mountain_flowers.remove(flower);
+			picked = true;
+		    }
+		}
+	    }
+
+	    System.out.println(inventory[0] + ", " + inventory[1] + ": " + score);
+	    
+	    clearKey(KeyEvent.VK_SPACE);
+	}
+	
 	if (checkKey(KeyEvent.VK_RIGHT)) {
 	    azimuth += dt;
 	    if (azimuth > Math.PI) {
@@ -232,8 +310,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    }
 	}
 	if (checkKey(KeyEvent.VK_UP)) {
-	    player = new Point3D(player.getX() + dt*Math.sin(azimuth),
-				 player.getY() + dt*Math.cos(azimuth),
+	    player = new Point3D(player.getX() + 1.25*dt*Math.sin(azimuth),
+				 player.getY() + 1.25*dt*Math.cos(azimuth),
 				 player.getZ());
 	    fixHeight();
 	}
@@ -250,6 +328,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
         Graphics2D graphics = (Graphics2D)g;
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+	graphics.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+	
 	graphics.setColor(Color.black);
 	graphics.fill(viewport);
 	
@@ -310,16 +390,66 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		graphics.fill(mountain_view.createTransformedShape(mountain));
 
 		// draw flower
-		if (distance < 0.75) {
-		    distance = 0.75;
+		if (mountain_flowers.get(p) != null) {
+		    if (distance < 0.75) {
+			distance = 0.75;
+		    }
+		    String flower = mountain_flowers.get(p);
+		    graphics.setColor(flower_colors.get(flower));
+		    mountain_view.concatenate(AffineTransform.getTranslateInstance(0,elevation));
+		    mountain_view.concatenate(AffineTransform.getScaleInstance(0.5*yscale/(xscale*distance),0.5/distance));
+		    mountain_view.concatenate(AffineTransform.getTranslateInstance(0,1.25));
+		    Shape transformed_flower = mountain_view.createTransformedShape(flower_glyphs.get(flower));
+		    graphics.fill(transformed_flower);
+
+		    if (isFlowerPickable(p)) {
+			graphics.setColor(Color.white);
+			graphics.draw(transformed_flower);
+		    }
 		}
-		String flower = mountain_flowers.get(p);
-		graphics.setColor(flower_colors.get(flower));
-	        mountain_view.concatenate(AffineTransform.getTranslateInstance(0,elevation));
-		mountain_view.concatenate(AffineTransform.getScaleInstance(0.5*yscale/(xscale*distance),0.5/distance));
-		mountain_view.concatenate(AffineTransform.getTranslateInstance(0,1.25));
-		graphics.fill(mountain_view.createTransformedShape(flower_glyphs.get(flower)));
 	    });
 
+	// draw score
+	AffineTransform score_transform = AffineTransform.getScaleInstance(yscale * 0.05, -yscale * 0.05);
+	score_transform.translate(1.5, -1.5);
+	for (int i = 0; i < NUM_MOUNTAINS / 2; i++) {
+	    Shape this_score_shape = score_transform.createTransformedShape(score_shape);
+	    if (score > i) {
+		graphics.setColor(Color.white);
+		if (score == NUM_MOUNTAINS / 2) {
+		    graphics.setColor(flower_colors.get(String.valueOf(flower_types.charAt(i % flower_types.length()))));
+		}
+		graphics.fill(this_score_shape);
+	    }
+	    graphics.setColor(Color.white);
+	    graphics.draw(this_score_shape);
+
+	    score_transform.translate(3, 0);
+	}
+	
+	// draw inventory
+	AffineTransform inventory_transform = AffineTransform.getScaleInstance(yscale * 0.1, -yscale * 0.1);
+	inventory_transform.translate(22.0 * xscale/yscale - 4, -1.25);
+	for (int i = 0; i <= 1; i++) {
+	    graphics.setColor(Color.gray);
+	    Shape this_inventory_shape = inventory_transform.createTransformedShape(inventory_shape);
+	    graphics.draw(this_inventory_shape);
+	    graphics.fill(this_inventory_shape);
+
+	    if (inventory[i] != null) {
+		graphics.setColor(flower_colors.get(inventory[i]));
+		graphics.fill(inventory_transform.createTransformedShape(flower_glyphs.get(inventory[i])));
+	    }
+	    inventory_transform.translate(2.5, 0);
+	}
+    }
+    
+    public void start() {
+	nanotime = System.nanoTime();
+	timer.start();
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Alpenblumen());
     }
 }
