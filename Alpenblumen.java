@@ -2,7 +2,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
-import javafx.geometry.Point3D;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
@@ -11,6 +10,16 @@ import java.util.Iterator;
 
 public class Alpenblumen extends JPanel implements KeyListener, ActionListener, Runnable {
 
+    class Point3D {
+	public final double x,y,z;
+
+	public Point3D(double x, double y, double z) {
+	    this.x = x;
+	    this.y = y;
+	    this.z = z;
+	}
+    }
+    
     final GeneralPath cosine_shape, score_shape, inventory_shape;
     final Shape viewport;
     final int width, height, x0, y0, xscale, yscale;
@@ -113,19 +122,19 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		Iterator<Point3D> iter = mountains.iterator();
 		while (iter.hasNext()) {
 		    Point3D other = iter.next();
-		    double dx = x - other.getX();
-		    double dy = y - other.getY();
+		    double dx = x - other.x;
+		    double dy = y - other.x;
 		    double distance = Math.sqrt(dx*dx + dy*dy);
 		    
 		    if (distance < MIN_CLEARANCE) {
 			acceptable = false;
 		    }
 
-		    if (min < other.getZ() - distance + MIN_CLEARANCE) {
-			min = other.getZ() - distance + MIN_CLEARANCE;
+		    if (min < other.z - distance + MIN_CLEARANCE) {
+			min = other.z - distance + MIN_CLEARANCE;
 		    }
-		    if (max > other.getZ() + distance - MIN_CLEARANCE) {
-			max = other.getZ() + distance - MIN_CLEARANCE;
+		    if (max > other.z + distance - MIN_CLEARANCE) {
+			max = other.z + distance - MIN_CLEARANCE;
 		    }
 		}
 		if (min > max) { acceptable = false; }
@@ -170,15 +179,15 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	Iterator<Point3D> iter = mountains.iterator();
 	while (iter.hasNext()) {
 	    Point3D mountain = iter.next();
-	    double dx = player.getX() - mountain.getX();
-	    double dy = player.getY() - mountain.getY();
+	    double dx = player.x - mountain.x;
+	    double dy = player.y - mountain.y;
 	    double distance = Math.sqrt(dx*dx + dy*dy);
 
-	    if (z < mountain.getZ() - distance + 1) {
-		z = mountain.getZ() - distance + 1;
+	    if (z < mountain.z - distance + 1) {
+		z = mountain.z - distance + 1;
 	    }
 	}
-	player = new Point3D(player.getX(),player.getY(),z);
+	player = new Point3D(player.x,player.y,z);
     }
     
     // implements Runnable
@@ -238,9 +247,9 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	}
 
 	double dx, dy, dz, distance, m_azimuth;
-	dx = p.getX() - player.getX();
-	dy = p.getY() - player.getY();		
-	dz = p.getZ() - player.getZ();		
+	dx = p.x - player.x;
+	dy = p.y - player.y;		
+	dz = p.z - player.z;		
 
 	distance = Math.sqrt(dx*dx+dy*dy);
 	if (distance > 0) {
@@ -307,15 +316,15 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    }
 	}
 	if (checkKey(KeyEvent.VK_UP)) {
-	    player = new Point3D(player.getX() + 1.25*dt*Math.sin(azimuth),
-				 player.getY() + 1.25*dt*Math.cos(azimuth),
-				 player.getZ());
+	    player = new Point3D(player.x + 1.25*dt*Math.sin(azimuth),
+				 player.y + 1.25*dt*Math.cos(azimuth),
+				 player.z);
 	    fixHeight();
 	}
 	if (checkKey(KeyEvent.VK_DOWN)) {
-	    player = new Point3D(player.getX() - dt*Math.sin(azimuth),
-				 player.getY() - dt*Math.cos(azimuth),
-				 player.getZ());
+	    player = new Point3D(player.x - dt*Math.sin(azimuth),
+				 player.y - dt*Math.cos(azimuth),
+				 player.z);
 	    fixHeight();
 	}
     }
@@ -332,15 +341,15 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	
 	// draw the mountains
 	mountains.sort(Comparator.comparing(p -> -(
-						  (p.getX() - player.getX())*(p.getX() - player.getX()) +
-						  (p.getY() - player.getY())*(p.getY() - player.getY())
+						  (p.x - player.x)*(p.x - player.x) +
+						  (p.y - player.y)*(p.y - player.y)
 						   )));
 
 	mountains.forEach(p -> {
 		double dx, dy, dz, distance, m_azimuth, elevation;
-		dx = p.getX() - player.getX();
-		dy = p.getY() - player.getY();		
-		dz = p.getZ() - player.getZ();		
+		dx = p.x - player.x;
+		dy = p.y - player.y;		
+		dz = p.z - player.z;		
 
 		distance = Math.sqrt(dx*dx+dy*dy);
 		if (distance > 0) {
