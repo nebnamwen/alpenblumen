@@ -1,0 +1,17 @@
+Alpenblumen (mountain/alpine flowers) is a tiny game by Benjamin Newman.
+
+Inspired by Mark Brown's video (https://www.youtube.com/watch?v=CZzcVs8tNfE&)
+on the development of Zelda: Breath of the Wild, which mentions the
+"triangle rule" -- mountains on the horizon are triangles which occlude
+what's beyond them, you can go over or around them to see what's beyond --
+I tried to come up with the simplest, game-jam-sized game that would use
+that idea.  Alpenblumen is the result.
+
+The game is packaged as a single Java class file.  You'll need a Java
+runtime to run it.
+
+Use the arrow keys to navigate.  Use the spacebar to pick flowers.
+You can hold two flowers in your inventory.  When you pick a flower
+that matches one in your inventory, both are cleared and you score
+a point.  Score all pairs of flowers to compplete the game.  Close
+the window to exit.
