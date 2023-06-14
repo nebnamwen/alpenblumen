@@ -123,7 +123,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		while (iter.hasNext()) {
 		    Point3D other = iter.next();
 		    double dx = x - other.x;
-		    double dy = y - other.x;
+		    double dy = y - other.y;
 		    double distance = Math.sqrt(dx*dx + dy*dy);
 		    
 		    if (distance < MIN_CLEARANCE) {
