@@ -291,9 +291,6 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		    }
 		}
 	    }
-
-	    System.out.println(inventory[0] + ", " + inventory[1] + ": " + score);
-	    
 	    clearKey(KeyEvent.VK_SPACE);
 	}
 	
