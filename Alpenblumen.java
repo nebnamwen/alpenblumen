@@ -19,6 +19,26 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    this.z = z;
 	}
     }
+
+    class FlowerType {
+	public final Color color;
+	public final Shape shape;
+
+	public FlowerType(int petals, Color c) {
+	    this.color = c;
+
+	    GeneralPath path = new GeneralPath();
+	    path.moveTo(0,1);
+	    for (int j = 0; j < petals; j++) {
+		double midangle = 2 * Math.PI * (j + 0.5) / petals;
+		double toangle = 2 * Math.PI * (j + 1) / petals;
+		path.quadTo(0.7*Math.sin(midangle),0.7*Math.cos(midangle),0,0);
+		path.quadTo(0.7*Math.sin(midangle),0.7*Math.cos(midangle),Math.sin(toangle),Math.cos(toangle));
+	    }
+	    path.closePath();
+	    this.shape = path;
+	}
+    }
     
     final GeneralPath cosine_shape, score_shape, inventory_shape;
     final Shape viewport;
@@ -30,7 +50,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     
     Point3D player;
     double azimuth = 0;
-    String[] inventory = new String[2];
+    FlowerType[] inventory = new FlowerType[2];
     int score = 0;
     
     HashSet<Integer> keyspressed = new HashSet<Integer>();
@@ -40,34 +60,17 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     final static double MIN_CLEARANCE = 2;
 
     ArrayList<Point3D> mountains = new ArrayList<Point3D>();
+    ArrayList<FlowerType> flower_types = new ArrayList<FlowerType>();
     
-    HashMap<Point3D,String> mountain_flowers = new HashMap<Point3D,String>();
-    HashMap<String,Color> flower_colors = new HashMap<String,Color>();
-    HashMap<String,Shape> flower_glyphs = new HashMap<String,Shape>();
-
-    final String flower_types = "34567";
+    HashMap<Point3D,FlowerType> mountain_flowers = new HashMap<Point3D,FlowerType>();
     
     public Alpenblumen() {
 	// initialize flower types
-	flower_colors.put("3",Color.green);
-	flower_colors.put("4",Color.yellow);
-	flower_colors.put("5",Color.orange);
-	flower_colors.put("6",Color.cyan);
-	flower_colors.put("7",Color.magenta);
-
-	for (int i = 0; i < flower_types.length(); i++) {
-	    int petals = i+3;
-	    GeneralPath path = new GeneralPath();
-	    path.moveTo(0,1);
-	    for (int j = 0; j < petals; j++) {
-		double midangle = 2 * Math.PI * (j + 0.5) / petals;
-		double toangle = 2 * Math.PI * (j + 1) / petals;
-		path.quadTo(0.7*Math.sin(midangle),0.7*Math.cos(midangle),0,0);
-		path.quadTo(0.7*Math.sin(midangle),0.7*Math.cos(midangle),Math.sin(toangle),Math.cos(toangle));
-	    }
-	    path.closePath();
-	    flower_glyphs.put(String.valueOf(flower_types.charAt(i)),path);
-	}
+	flower_types.add(new FlowerType(3,Color.green));
+	flower_types.add(new FlowerType(4,Color.yellow));
+	flower_types.add(new FlowerType(5,Color.orange));
+	flower_types.add(new FlowerType(6,Color.cyan));
+	flower_types.add(new FlowerType(7,Color.magenta));
 
 	// initialize cosine shape
 	cosine_shape = new GeneralPath();
@@ -142,7 +145,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 
 	    z = min + Math.random()*(max - min);
 	    Point3D new_mountain = new Point3D(x,y,z);
-	    mountain_flowers.put(new_mountain, String.valueOf(flower_types.charAt(i % flower_types.length())));
+	    mountain_flowers.put(new_mountain, flower_types.get(i % flower_types.size()));
 	    mountains.add(new_mountain);
 	}
 
@@ -191,6 +194,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     }
     
     // implements Runnable
+
     public void run() {
 	JFrame f = new JFrame("alpenblumen");
 	f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -238,7 +242,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     }
 
     public boolean isFlowerPickable(Point3D p) {
-	String flower = mountain_flowers.get(p);
+	FlowerType flower = mountain_flowers.get(p);
 	if (flower == null) {
 	    return false;
 	}
@@ -400,12 +404,12 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		    if (distance < 0.75) {
 			distance = 0.75;
 		    }
-		    String flower = mountain_flowers.get(p);
-		    graphics.setColor(flower_colors.get(flower));
+		    FlowerType flower = mountain_flowers.get(p);
+		    graphics.setColor(flower.color);
 		    mountain_view.concatenate(AffineTransform.getTranslateInstance(0,elevation));
 		    mountain_view.concatenate(AffineTransform.getScaleInstance(0.5*yscale/(xscale*distance),0.5/distance));
 		    mountain_view.concatenate(AffineTransform.getTranslateInstance(0,1.25));
-		    Shape transformed_flower = mountain_view.createTransformedShape(flower_glyphs.get(flower));
+		    Shape transformed_flower = mountain_view.createTransformedShape(flower.shape);
 		    graphics.fill(transformed_flower);
 
 		    if (isFlowerPickable(p)) {
@@ -423,7 +427,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    if (score > i) {
 		graphics.setColor(Color.white);
 		if (score == NUM_MOUNTAINS / 2) {
-		    graphics.setColor(flower_colors.get(String.valueOf(flower_types.charAt(i % flower_types.length()))));
+		    graphics.setColor(flower_types.get(i % flower_types.size()).color);
 		}
 		graphics.fill(this_score_shape);
 	    }
@@ -443,8 +447,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    graphics.fill(this_inventory_shape);
 
 	    if (inventory[i] != null) {
-		graphics.setColor(flower_colors.get(inventory[i]));
-		graphics.fill(inventory_transform.createTransformedShape(flower_glyphs.get(inventory[i])));
+		graphics.setColor(inventory[i].color);
+		graphics.fill(inventory_transform.createTransformedShape(inventory[i].shape));
 	    }
 	    inventory_transform.translate(2.5, 0);
 	}
