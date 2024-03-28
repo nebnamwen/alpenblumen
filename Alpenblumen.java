@@ -39,6 +39,16 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    this.shape = path;
 	}
     }
+
+    class Mountain {
+	public final Point3D pos;
+	public FlowerType flower;
+
+	public Mountain(Point3D pos, FlowerType flower) {
+	    this.pos = pos;
+	    this.flower = flower;
+	}
+    }
     
     final GeneralPath cosine_shape, score_shape, inventory_shape;
     final Shape viewport;
@@ -59,10 +69,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     final static double MAP_RADIUS = 15;
     final static double MIN_CLEARANCE = 2;
 
-    ArrayList<Point3D> mountains = new ArrayList<Point3D>();
     ArrayList<FlowerType> flower_types = new ArrayList<FlowerType>();
-    
-    HashMap<Point3D,FlowerType> mountain_flowers = new HashMap<Point3D,FlowerType>();
+    ArrayList<Mountain> mountains = new ArrayList<Mountain>();
     
     public Alpenblumen() {
 	// initialize flower types
@@ -122,9 +130,9 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		
 		acceptable = (x*x + y*y <= MAP_RADIUS*MAP_RADIUS);
 
-		Iterator<Point3D> iter = mountains.iterator();
+		Iterator<Mountain> iter = mountains.iterator();
 		while (iter.hasNext()) {
-		    Point3D other = iter.next();
+		    Point3D other = iter.next().pos;
 		    double dx = x - other.x;
 		    double dy = y - other.y;
 		    double distance = Math.sqrt(dx*dx + dy*dy);
@@ -144,9 +152,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    } while (!acceptable);
 
 	    z = min + Math.random()*(max - min);
-	    Point3D new_mountain = new Point3D(x,y,z);
-	    mountain_flowers.put(new_mountain, flower_types.get(i % flower_types.size()));
-	    mountains.add(new_mountain);
+	    Point3D pos = new Point3D(x,y,z);
+	    mountains.add(new Mountain(pos, flower_types.get(i % flower_types.size())));
 	}
 
 	// initialize player
@@ -179,9 +186,9 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     void fixHeight() {
 	double z = -MAP_RADIUS;
 	
-	Iterator<Point3D> iter = mountains.iterator();
+	Iterator<Mountain> iter = mountains.iterator();
 	while (iter.hasNext()) {
-	    Point3D mountain = iter.next();
+	    Point3D mountain = iter.next().pos;
 	    double dx = player.x - mountain.x;
 	    double dy = player.y - mountain.y;
 	    double distance = Math.sqrt(dx*dx + dy*dy);
@@ -241,19 +248,18 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
         return keyspressed.contains(new Integer(keycode));
     }
 
-    public boolean isFlowerPickable(Point3D p) {
-	FlowerType flower = mountain_flowers.get(p);
-	if (flower == null) {
+    public boolean isFlowerPickable(Mountain m) {
+	if (m.flower == null) {
 	    return false;
 	}
-	if (inventory[0] != null && !inventory[0].equals(flower) && inventory[1] != null && !inventory[1].equals(flower)) {
+	if (inventory[0] != null && !inventory[0].equals(m.flower) && inventory[1] != null && !inventory[1].equals(m.flower)) {
 	    return false;
 	}
 
 	double dx, dy, dz, distance, m_azimuth;
-	dx = p.x - player.x;
-	dy = p.y - player.y;		
-	dz = p.z - player.z;		
+	dx = m.pos.x - player.x;
+	dy = m.pos.y - player.y;		
+	dz = m.pos.z - player.z;		
 
 	distance = Math.sqrt(dx*dx+dy*dy);
 	if (distance > 0) {
@@ -271,12 +277,12 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	}
     }
     
-    public Point3D pickableFlower() {
-	Iterator<Point3D> iter = mountains.iterator();
+    public Mountain pickableFlower() {
+	Iterator<Mountain> iter = mountains.iterator();
         while (iter.hasNext()) {
-            Point3D p = iter.next();
-	    if (isFlowerPickable(p)) {
-		return p;
+            Mountain m = iter.next();
+	    if (isFlowerPickable(m)) {
+		return m;
 	    }
 	}
 	return null;
@@ -285,21 +291,21 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     // update
     public void update(double dt) {
 	if (checkKey(KeyEvent.VK_SPACE)) {
-	    Point3D flower = pickableFlower();
-	    if (flower != null) {
+	    Mountain m = pickableFlower();
+	    if (m != null) {
 		boolean picked = false;
 		for (int i = 0; i <= 1; i++) {
-		    if (!picked && mountain_flowers.get(flower).equals(inventory[i])) {
+		    if (!picked && m.flower.equals(inventory[i])) {
 			inventory[i] = null;
-			mountain_flowers.remove(flower);
+			m.flower = null;
 			score += 1;
 			picked = true;
 		    }
 		}
 		for (int i = 0; i <= 1; i++) {
 		    if (!picked && inventory[i] == null) {
-			inventory[i] = mountain_flowers.get(flower);
-			mountain_flowers.remove(flower);
+			inventory[i] = m.flower;
+			m.flower = null;
 			picked = true;
 		    }
 		}
@@ -344,13 +350,15 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	graphics.fill(viewport);
 	
 	// draw the mountains
-	mountains.sort(Comparator.comparing(p -> -(
-						  (p.x - player.x)*(p.x - player.x) +
-						  (p.y - player.y)*(p.y - player.y)
+	mountains.sort(Comparator.comparing(m -> -(
+						   (m.pos.x - player.x)*(m.pos.x - player.x) +
+						   (m.pos.y - player.y)*(m.pos.y - player.y)
 						   )));
 
-	mountains.forEach(p -> {
+	mountains.forEach(m -> {
 		double dx, dy, dz, distance, m_azimuth, elevation;
+		Point3D p = m.pos;
+		
 		dx = p.x - player.x;
 		dy = p.y - player.y;		
 		dz = p.z - player.z;		
@@ -400,19 +408,18 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		graphics.fill(mountain_view.createTransformedShape(mountain));
 
 		// draw flower
-		if (mountain_flowers.get(p) != null) {
+		if (m.flower != null) {
 		    if (distance < 0.75) {
 			distance = 0.75;
 		    }
-		    FlowerType flower = mountain_flowers.get(p);
-		    graphics.setColor(flower.color);
+		    graphics.setColor(m.flower.color);
 		    mountain_view.concatenate(AffineTransform.getTranslateInstance(0,elevation));
 		    mountain_view.concatenate(AffineTransform.getScaleInstance(0.5*yscale/(xscale*distance),0.5/distance));
 		    mountain_view.concatenate(AffineTransform.getTranslateInstance(0,1.25));
-		    Shape transformed_flower = mountain_view.createTransformedShape(flower.shape);
+		    Shape transformed_flower = mountain_view.createTransformedShape(m.flower.shape);
 		    graphics.fill(transformed_flower);
 
-		    if (isFlowerPickable(p)) {
+		    if (isFlowerPickable(m)) {
 			graphics.setColor(Color.white);
 			graphics.draw(transformed_flower);
 		    }
