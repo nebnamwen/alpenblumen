@@ -80,7 +80,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	flower_types.add(new FlowerType(6,Color.cyan));
 	flower_types.add(new FlowerType(7,Color.magenta));
 
-	// initialize cosine shape
+	// initialize cosine shape that will be used to draw mountains
 	cosine_shape = new GeneralPath();
 
 	cosine_shape.moveTo(-3*Math.PI, -2);
@@ -99,6 +99,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	cosine_shape.closePath();
 
 	// initialize HUD shapes
+	// star for score display
 	score_shape = new GeneralPath();
 	score_shape.moveTo(0,1);
 	for (int i = 0; i < 5; i++) {
@@ -109,6 +110,7 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	    }
 	score_shape.closePath();
 	
+	// rounded square for inventory display
 	inventory_shape = new GeneralPath();
 	inventory_shape.moveTo(0,1);
 	inventory_shape.quadTo(1,1,1,0);
@@ -184,6 +186,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     }
 
     void fixHeight() {
+	// set the player's z coordinate to be just above the surface
+	// formed by the union of all the conical mountains
 	double z = -MAP_RADIUS;
 	
 	Iterator<Mountain> iter = mountains.iterator();
@@ -250,9 +254,12 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 
     public boolean isFlowerPickable(Mountain m) {
 	if (m.flower == null) {
+	    // the flower on this mountain was already picked
 	    return false;
 	}
 	if (inventory[0] != null && !inventory[0].equals(m.flower) && inventory[1] != null && !inventory[1].equals(m.flower)) {
+	    // we neither have an empty inventory slot to hold this flower
+	    // nor a matching flower in inventory to pair it with
 	    return false;
 	}
 
@@ -270,9 +277,11 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 	}
 	
 	if (distance <= 0.85 && Math.cos(m_azimuth - azimuth) >= 0.75) {
+	    // this flower is close enough to reach and we are facing towards it
 	    return true;
 	}
 	else {
+	    // flower is out of range
 	    return false;
 	}
     }
@@ -290,12 +299,15 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
     
     // update
     public void update(double dt) {
+	// space bar is pressed -- try to pick a flower if one is in reach
 	if (checkKey(KeyEvent.VK_SPACE)) {
 	    Mountain m = pickableFlower();
 	    if (m != null) {
 		boolean picked = false;
 		for (int i = 0; i <= 1; i++) {
 		    if (!picked && m.flower.equals(inventory[i])) {
+			// flower on this mountain matches one in inventory
+			// clear both and score a point
 			inventory[i] = null;
 			m.flower = null;
 			score += 1;
@@ -304,6 +316,8 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 		}
 		for (int i = 0; i <= 1; i++) {
 		    if (!picked && inventory[i] == null) {
+			// open slot in inventory
+			// pick this flower and store it
 			inventory[i] = m.flower;
 			m.flower = null;
 			picked = true;
@@ -356,6 +370,9 @@ public class Alpenblumen extends JPanel implements KeyListener, ActionListener, 
 						   )));
 
 	mountains.forEach(m -> {
+		// each mountain is drawn as the masked area intersection of two cosine curves
+		// and shaded according to its distance from the player
+		
 		double dx, dy, dz, distance, m_azimuth, elevation;
 		Point3D p = m.pos;
 		
